@@ -6,7 +6,6 @@ setup(name='cuda_ml',
       install_requires=[
           'numpy',
           'click',
-          'scipy',
           'pycuda'
       ],
       entry_points={

@@ -9,7 +9,6 @@ import glob
 import os
 import pycuda.driver as cuda
 import pycuda.autoinit
-from scipy import ndimage
 from pycuda.compiler import SourceModule
 
 class Engine:
@@ -25,9 +24,11 @@ class Engine:
         """
 
         for img in images:
-            # Read image and convert to greyscale array
-            bl_img = ndimage.imread(img, flatten=True)
-            print bl_img
+            # Read image
+            with open(img) as i:
+                img_arr = i.readlines()
+
+            print len(img_arr)
 
             # Determine light vs dark in image
 
@@ -41,9 +42,11 @@ class Engine:
         """
 
         for img in images:
-            # Read image and convert to greyscale array
-            bl_img = ndimage.imread(img, flatten=True)
-            print bl_img
+            # Read image 
+            with open(img) as i:
+                img_arr = i.readlines()
+
+            print len(img_arr)
 
             # Determine light vs dark in image
 
@@ -91,27 +94,20 @@ class Engine:
         """
 
         # Verify directory provided contains images
-        ppm = os.getcwd() + "/" + self.pl + "/*.ppm"
-        png = os.getcwd() + "/" + self.pl + "/*.png"
-        jpg = os.getcwd() + "/" + self.pl + "/*.jpg"
-        jpeg = os.getcwd() + "/" + self.pl + "/*.jpeg"
+        raw = os.getcwd() + "/" + self.pl + "/*.raw"
+        raw_files = glob.glob(ppm)
 
-        ppm_files = glob.glob(ppm)
-        png_files = glob.glob(png)
-        jpg_files = glob.glob(jpg)
-        jpeg_files = glob.glob(jpeg)
-
-        if not ppm_files and not png_files and not jpg_files and not jpeg_files:
+        if not raw_files:
             print "ERROR: Directory provided did not contain any images"
-            print "INFO: Correct image file extensions must be .ppm, .png, .jpg, or .jpeg"
+            print "INFO: Correct image file extensions must be in raw format converted from pillow_utility.py"
+            print "INFO: Reason is the UITS system will not support the pillow library due to incompatible dependencies... "\
+                    "so this must be ran separately on a personal environment"
             return 
-
-        images = ppm_files + png_files + jpg_files + jpeg_files
 
         # Begin either serial or parallel image processing with the list of images
         if self.ser == True:
-            self._start_serial(images)
+            self._start_serial(ppm_files)
         else:
-            self._start_parallel(images)
+            self._start_parallel(ppm_files)
 
 
