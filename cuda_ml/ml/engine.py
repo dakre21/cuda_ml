@@ -25,8 +25,14 @@ class Engine:
         """
 
         for img in images:
-            # TODO: perform image processing
-            print img
+            # Read image and convert to greyscale array
+            bl_img = ndimage.imread(img, flatten=True)
+            print bl_img
+
+            # Determine light vs dark in image
+
+            # Performan machine learning regression based on result
+
 
     
     def _start_parallel(self, images):
@@ -35,8 +41,14 @@ class Engine:
         """
 
         for img in images:
-            # TODO: Perform image processing
-            print img
+            # Read image and convert to greyscale array
+            bl_img = ndimage.imread(img, flatten=True)
+            print bl_img
+
+            # Determine light vs dark in image
+
+            # Performan machine learning regression based on result
+
 
         '''
         # Create random matrix
