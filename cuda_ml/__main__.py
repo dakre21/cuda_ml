@@ -5,16 +5,21 @@ Description: Main entry point for cuda ml application
 '''
 
 import sys
+import click
 from ml.engine import Engine
 
-def main():
+
+@click.command()
+@click.argument('pictures_location')
+@click.option('-s', '--serial', default=False)
+def main(pictures_location, serial):
     print("****************************")
     print("Starting CUDA ML Application")
     print("****************************")
     print("")
     print("")
 
-    engine = Engine()
+    engine = Engine(pictures_location, serial)
     engine.start()
 
 if __name__ == "__main__":

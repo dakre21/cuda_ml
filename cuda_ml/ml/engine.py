@@ -12,7 +12,20 @@ from pycuda.compiler import SourceModule
 
 class Engine:
 
-    def start(self):
+    def __init__(self, pic_loc, serial):
+        self.pl = pic_loc
+        self.ser = serial
+
+    def _start_serial(self):
+        """ 
+        Function that will start serial execution
+        """
+        pass
+
+    def _start_parallel(self):
+        """
+        Fuction that will start parallel execution
+        """
         # Create random matrix
         a = numpy.random.randn(4,4)
 
@@ -43,4 +56,17 @@ class Engine:
         cuda.memcpy_dtoh(a_doubled, a_gpu)
         print a_doubled
         print a
+
+    def start(self):
+        """
+        Function starts the execution of the main machine learning
+        code-- either serially or in parallel
+        """
+        # TODO: Iterate through directory for file images
+
+        if self.ser == True:
+            self._start_serial()
+        else:
+            self._start_parallel()
+
 
