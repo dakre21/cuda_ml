@@ -13,10 +13,10 @@
 
 ## Run instructions
 1. Simply run either:
-a. bsub < submit.sh (on UITS system)
-- Note: Modify submit.sh with the respective image directory and serial flag (e.g. if its present or not... currently disabled to
+- bsub < submit.sh (on UITS system)
+  - Note: Modify submit.sh with the respective image directory and serial flag (e.g. if its present or not... currently disabled to
 run in parallel)
-b. cuda_ml <path_to_images> 
+- cuda_ml <path_to_images> 
 
 ## Misc
 For help on running simply run cuda_ml --help to display options
