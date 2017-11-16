@@ -8,6 +8,7 @@ import sys
 import numpy
 import pycuda.driver as cuda
 import pycuda.autoinit
+from scipy import ndimage
 from pycuda.compiler import SourceModule
 
 class Engine:
