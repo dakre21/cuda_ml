@@ -10,7 +10,7 @@ from ml.engine import Engine
 
 
 @click.command()
-@click.argument('pictures_location')
+@click.option('-p', '--pictures_location', required=True)
 @click.option('-s', '--serial', default=False)
 def main(pictures_location, serial):
     print("****************************")

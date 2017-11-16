@@ -4,8 +4,9 @@ Date: 11/15/17
 Description: Main machine learning class to handle data prediction
 '''
 
-import sys
 import numpy
+import glob
+import os
 import pycuda.driver as cuda
 import pycuda.autoinit
 from scipy import ndimage
@@ -17,16 +18,27 @@ class Engine:
         self.pl = pic_loc
         self.ser = serial
 
-    def _start_serial(self):
+   
+    def _start_serial(self, images):
         """ 
         Function that will start serial execution
         """
-        pass
 
-    def _start_parallel(self):
+        for img in images:
+            # TODO: perform image processing
+            print img
+
+    
+    def _start_parallel(self, images):
         """
         Fuction that will start parallel execution
         """
+
+        for img in images:
+            # TODO: Perform image processing
+            print img
+
+        '''
         # Create random matrix
         a = numpy.random.randn(4,4)
 
@@ -57,17 +69,37 @@ class Engine:
         cuda.memcpy_dtoh(a_doubled, a_gpu)
         print a_doubled
         print a
+        '''
 
+  
     def start(self):
         """
         Function starts the execution of the main machine learning
         code-- either serially or in parallel
         """
-        # TODO: Iterate through directory for file images
 
+        # Verify directory provided contains images
+        ppm = os.getcwd() + "/" + self.pl + "/*.ppm"
+        png = os.getcwd() + "/" + self.pl + "/*.png"
+        jpg = os.getcwd() + "/" + self.pl + "/*.jpg"
+        jpeg = os.getcwd() + "/" + self.pl + "/*.jpeg"
+
+        ppm_files = glob.glob(ppm)
+        png_files = glob.glob(png)
+        jpg_files = glob.glob(jpg)
+        jpeg_files = glob.glob(jpeg)
+
+        if not ppm_files and not png_files and not jpg_files and not jpeg_files:
+            print "ERROR: Directory provided did not contain any images"
+            print "INFO: Correct image file extensions must be .ppm, .png, .jpg, or .jpeg"
+            return 
+
+        images = ppm_files + png_files + jpg_files + jpeg_files
+
+        # Begin either serial or parallel image processing with the list of images
         if self.ser == True:
-            self._start_serial()
+            self._start_serial(images)
         else:
-            self._start_parallel()
+            self._start_parallel(images)
 
 
