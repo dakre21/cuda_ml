@@ -11,13 +11,13 @@ from ml.engine import Engine
 
 @click.command()
 @click.option('-p', '--pictures_location', required=True)
-@click.option('-s', '--serial', default=False)
+@click.option('-s', '--serial', default=False, is_flag=True)
 def main(pictures_location, serial):
-    print("****************************")
-    print("Starting CUDA ML Application")
-    print("****************************")
-    print("")
-    print("")
+    print "****************************"
+    print "Starting CUDA ML Application"
+    print "****************************"
+    print ""
+    print ""
 
     engine = Engine(pictures_location, serial)
     engine.start()

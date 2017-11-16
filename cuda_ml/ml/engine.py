@@ -26,9 +26,7 @@ class Engine:
         for img in images:
             # Read image
             with open(img) as i:
-                img_arr = i.readlines()
-
-            print len(img_arr)
+                img_buf = i.readlines()
 
             # Determine light vs dark in image
 
@@ -44,9 +42,7 @@ class Engine:
         for img in images:
             # Read image 
             with open(img) as i:
-                img_arr = i.readlines()
-
-            print len(img_arr)
+                img_buf = i.readlines()
 
             # Determine light vs dark in image
 
@@ -95,7 +91,7 @@ class Engine:
 
         # Verify directory provided contains images
         raw = os.getcwd() + "/" + self.pl + "/*.raw"
-        raw_files = glob.glob(ppm)
+        raw_files = glob.glob(raw)
 
         if not raw_files:
             print "ERROR: Directory provided did not contain any images"
@@ -106,8 +102,8 @@ class Engine:
 
         # Begin either serial or parallel image processing with the list of images
         if self.ser == True:
-            self._start_serial(ppm_files)
+            self._start_serial(raw_files)
         else:
-            self._start_parallel(ppm_files)
+            self._start_parallel(raw_files)
 
 
