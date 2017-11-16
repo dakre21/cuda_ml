@@ -5,7 +5,7 @@ setup(name='cuda_ml',
       packages=['cuda_ml'],
       install_requires=[
           'numpy',
-          'pycuda',
+          'pycuda'
       ],
       entry_points={
           'console_scripts': [
