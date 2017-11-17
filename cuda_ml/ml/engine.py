@@ -7,8 +7,11 @@ Description: Main machine learning class to handle data prediction
 import numpy
 import glob
 import os
+import csv
+import sys
 import pycuda.driver as cuda
 import pycuda.autoinit
+from time import time
 from pycuda.compiler import SourceModule
 
 class Engine:
@@ -16,23 +19,58 @@ class Engine:
     def __init__(self, pic_loc, serial):
         self.pl = pic_loc
         self.ser = serial
+        self.mid_point = 128
+        self.threshold_under = self.mid_point - (self.mid_point * 0.1)
+        self.threshold_over = self.mid_point + (self.mid_point * 0.1)
+        self.csv_dict = {}
+        self.csv_file = "cuda_ml_results.csv"
+  
 
-   
     def _start_serial(self, images):
         """ 
         Function that will start serial execution
         """
 
         for img in images:
+            # Fwd declarations for calculations
+            dark_count = 0
+            light_count = 0
+            none_count = 0
+            exec_time = 0
+            data = []
+
             # Read image
             with open(img) as i:
-                img_buf = i.readlines()
+                img_buf = i.readlines()[0].split()
 
-            # Determine light vs dark in image
+            # Determine light vs dark in image using img classification algo
+            exec_time = time()
 
-            # Performan machine learning regression based on result
+            for element in img_buf:
+                if int(element) < self.threshold_over:
+                    dark_count += 1
+                elif int(element) > self.threshold_under:
+                    light_count += 1
+                else:
+                    none_count += 1 
 
+            print img
+            print "Dark count " + str(dark_count)
+            print "Light count " + str(light_count)
+            print "Neither count " + str(none_count)
 
+            if dark_count > light_count and dark_count > none_count:
+                data.append("dark")
+            elif light_count > dark_count and light_count > none_count:
+                data.append("light")
+            else:
+                data.append("neither")
+
+            # Calculate total execution time
+            exec_time = time() - exec_time
+
+            data.append(exec_time)
+            self.csv_dict[os.path.basename(img)] = data
     
     def _start_parallel(self, images):
         """
@@ -44,9 +82,9 @@ class Engine:
             with open(img) as i:
                 img_buf = i.readlines()
 
-            # Determine light vs dark in image
+            # Create convolutions
 
-            # Performan machine learning regression based on result
+            # Determine light vs dark in image using image classification algo
 
 
         '''
@@ -93,6 +131,10 @@ class Engine:
         raw = os.getcwd() + "/" + self.pl + "/*.raw"
         raw_files = glob.glob(raw)
 
+        # Create data structure to create results 
+        for i in range(len(raw_files)):
+            self.csv_dict[os.path.basename(raw_files[i])] = []
+
         if not raw_files:
             print "ERROR: Directory provided did not contain any images"
             print "INFO: Correct image file extensions must be in raw format converted from pillow_utility.py"
@@ -100,10 +142,23 @@ class Engine:
                     "so this must be ran separately on a personal environment"
             return 
 
+        print "Found appropriate image files within provided directory"
+        print "Beginning image recognition algorithm on all of the images found within the directory..."
+
         # Begin either serial or parallel image processing with the list of images
         if self.ser == True:
             self._start_serial(raw_files)
         else:
             self._start_parallel(raw_files)
+
+        print "Finishing CUDA ML Application Execution"
+        print "Results captured in " + self.csv_file
+
+        # Create csv file
+        with open(self.csv_file, 'w') as f:
+            writer = csv.writer(f)
+            for key, value in self.csv_dict.items():
+                writer.writerow([key, value])
+
 
 

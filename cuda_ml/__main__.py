@@ -17,7 +17,6 @@ def main(pictures_location, serial):
     print "Starting CUDA ML Application"
     print "****************************"
     print ""
-    print ""
 
     engine = Engine(pictures_location, serial)
     engine.start()
