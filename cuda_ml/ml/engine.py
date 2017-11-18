@@ -19,10 +19,10 @@ class Engine:
     def __init__(self, pic_loc, serial):
         self.pl = pic_loc
         self.ser = serial
-        self.mid_point = 128
         self.csv_dict = {}
         self.assessment = ""
-        self.csv_file = "cuda_ml_results.csv"
+        self.csv_serial_file = "cuda_ml_serial_results.csv"
+        self.csv_parallel_file = "cuda_ml_parallel_results.csv"
         self.human_file = "human_assessment.txt"
   
 
@@ -36,6 +36,7 @@ class Engine:
             dark_count = 0
             light_count = 0
             exec_time = 0
+            mid_point = 128
             data = []
             tf = False
             img_bn = os.path.basename(img)
@@ -48,7 +49,7 @@ class Engine:
             exec_time = time()
 
             for element in img_buf:
-                if int(element) <= self.mid_point:
+                if int(element) <= mid_point:
                     dark_count += 1
                 else:
                     light_count += 1
@@ -60,14 +61,14 @@ class Engine:
 
             if dark_count >= light_count:
                 if self.assessment != "dark":
-                    self.mid_point += 10
+                    mid_point += 10
                 else:
                     tf = True
 
                 data.append("dark")
             else:
                 if self.assessment != "light":
-                    self.mid_point -= 10
+                    mid_point -= 10
                 else:
                     tf = True
 
@@ -87,47 +88,102 @@ class Engine:
         """
 
         for img in images:
-            # Read image 
+            # Fwd declarations for calculations
+            exec_time = 0
+            dark_count = [0]
+            light_count = [0]
+            mid_point = [128]
+            data = []
+            tf = False
+            img_bn = os.path.basename(img)
+
+            # Read image
             with open(img) as i:
-                img_buf = i.readlines()
+                img_buf = i.readlines()[0].split()
 
-            # Create convolutions
+            size = [len(img_buf)]
 
-            # Determine light vs dark in image using image classification algo
+            # Convert to single precision
+            img_buf = numpy.array(img_buf).astype(numpy.uint64)
+            mid_point = numpy.array(mid_point).astype(numpy.uint64)
+            size = numpy.array(size).astype(numpy.uint64)
+            dark_count = numpy.array(dark_count).astype(numpy.uint64)
+            light_count = numpy.array(light_count).astype(numpy.uint64)
 
+            # Allocate memory for gpu
+            img_gpu = cuda.mem_alloc(len(img_buf) * dark_count.nbytes)
+            mid_point_gpu = cuda.mem_alloc(mid_point.nbytes)
+            size_gpu = cuda.mem_alloc(size.nbytes)
+            dark_gpu = cuda.mem_alloc(dark_count.nbytes)
+            light_gpu = cuda.mem_alloc(light_count.nbytes)
 
-        '''
-        # Create random matrix
-        a = numpy.random.randn(4,4)
+            # Transfer data onto gpu
+            cuda.memcpy_htod(img_gpu, img_buf)
+            cuda.memcpy_htod(mid_point_gpu, mid_point)
+            cuda.memcpy_htod(size_gpu, size)
+            cuda.memcpy_htod(dark_gpu, dark_count)
+            cuda.memcpy_htod(light_gpu, light_count)
 
-        # Convert to single precision
-        a = a.astype(numpy.float32)
+            # Declare CUDA kernel function
+            mod = SourceModule("""
+            __global__ void detector(unsigned int* img_buf, unsigned int* dark_count, unsigned int* light_count, 
+                unsigned int* mid_point, unsigned int* size)
+            {
+                for (unsigned int i = blockIdx.x * blockDim.x + threadIdx.x; i < size[0]; i += blockDim.x * gridDim.x) {
+                    if (img_buf[i] <= mid_point[0]) {
+                        dark_count[0] += 1;
+                    } else {
+                        light_count[0] += 1;
+                    }
+                }
+            } 
+            """)
 
-        # Allocate memory for gpu
-        a_gpu = cuda.mem_alloc(a.nbytes)
+            # Determine light vs dark in image using img classification algo
+            exec_time = time()
 
-        # Transfer data onto gpu
-        cuda.memcpy_htod(a_gpu, a)
+            # Invoke kernel function
+            func = mod.get_function("detector")
+            func(img_gpu, dark_gpu, light_gpu, mid_point_gpu, size_gpu, block=(4,1,1), grid=(1, 1))
 
-        # Declare CUDA kernel function
-        mod = SourceModule("""
-        __global__ void doublify(float *a)
-        {
-            int idx = threadIdx.x + threadIdx.y*4;
-            a[idx] *= 2;
-        } 
-        """)
+            # Fetch data from kernel
+            new_dark_count = numpy.empty_like(dark_count)
+            new_light_count = numpy.empty_like(light_count)
+            cuda.memcpy_dtoh(new_dark_count, dark_gpu)
+            cuda.memcpy_dtoh(new_light_count, light_gpu)
 
-        # Invoke kernel function
-        func = mod.get_function("doublify")
-        func(a_gpu, block=(4,4,1))
+            for res in hbuf:
+                if img_bn in res:
+                    self.assessment = res.split(",")[1].split("\n")[0]
+                    break
 
-        # Fetch data from kernel
-        a_doubled = numpy.empty_like(a)
-        cuda.memcpy_dtoh(a_doubled, a_gpu)
-        print a_doubled
-        print a
-        '''
+            print img
+            print new_dark_count[0]
+            print new_light_count[0]
+            print size[0]
+
+            if new_dark_count[0] >= new_light_count[0]:
+                if self.assessment != "dark":
+                    mid_point += 10
+                else:
+                    tf = True
+
+                data.append("dark")
+            else:
+                if self.assessment != "light":
+                    mid_point -= 10
+                else:
+                    tf = True
+
+                data.append("light")
+
+            # Calculate total execution time
+            exec_time = time() - exec_time
+
+            # Append data to dictionary
+            data.append(exec_time)
+            data.append(tf)
+            self.csv_dict[os.path.basename(img)] = data
 
   
     def start(self):
@@ -160,14 +216,16 @@ class Engine:
         # Begin either serial or parallel image processing with the list of images
         if self.ser == True:
             self._start_serial(raw_files, hbuf)
+            csv_file = self.csv_serial_file
         else:
             self._start_parallel(raw_files, hbuf)
+            csv_file = self.csv_parallel_file
 
         print "Finishing CUDA ML Application Execution"
-        print "Results captured in " + self.csv_file
+        print "Results captured in " + csv_file
 
         # Create csv file
-        with open(self.csv_file, 'w') as f:
+        with open(csv_file, 'w') as f:
             writer = csv.writer(f)
             for key, value in self.csv_dict.items():
                 writer.writerow([key, value])
