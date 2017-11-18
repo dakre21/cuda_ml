@@ -20,13 +20,13 @@ class Engine:
         self.pl = pic_loc
         self.ser = serial
         self.mid_point = 128
-        self.threshold_under = self.mid_point - (self.mid_point * 0.1)
-        self.threshold_over = self.mid_point + (self.mid_point * 0.1)
         self.csv_dict = {}
+        self.assessment = ""
         self.csv_file = "cuda_ml_results.csv"
+        self.human_file = "human_assessment.txt"
   
 
-    def _start_serial(self, images):
+    def _start_serial(self, images, hbuf):
         """ 
         Function that will start serial execution
         """
@@ -35,9 +35,10 @@ class Engine:
             # Fwd declarations for calculations
             dark_count = 0
             light_count = 0
-            none_count = 0
             exec_time = 0
             data = []
+            tf = False
+            img_bn = os.path.basename(img)
 
             # Read image
             with open(img) as i:
@@ -47,32 +48,40 @@ class Engine:
             exec_time = time()
 
             for element in img_buf:
-                if int(element) < self.threshold_over:
+                if int(element) <= self.mid_point:
                     dark_count += 1
-                elif int(element) > self.threshold_under:
-                    light_count += 1
                 else:
-                    none_count += 1 
+                    light_count += 1
 
-            print img
-            print "Dark count " + str(dark_count)
-            print "Light count " + str(light_count)
-            print "Neither count " + str(none_count)
+            for res in hbuf:
+                if img_bn in res:
+                    self.assessment = res.split(",")[1].split("\n")[0]
+                    break
 
-            if dark_count > light_count and dark_count > none_count:
+            if dark_count >= light_count:
+                if self.assessment != "dark":
+                    self.mid_point += 10
+                else:
+                    tf = True
+
                 data.append("dark")
-            elif light_count > dark_count and light_count > none_count:
-                data.append("light")
             else:
-                data.append("neither")
+                if self.assessment != "light":
+                    self.mid_point -= 10
+                else:
+                    tf = True
+
+                data.append("light")
 
             # Calculate total execution time
             exec_time = time() - exec_time
 
+            # Append data to dictionary
             data.append(exec_time)
+            data.append(tf)
             self.csv_dict[os.path.basename(img)] = data
     
-    def _start_parallel(self, images):
+    def _start_parallel(self, images, hbuf):
         """
         Fuction that will start parallel execution
         """
@@ -145,11 +154,14 @@ class Engine:
         print "Found appropriate image files within provided directory"
         print "Beginning image recognition algorithm on all of the images found within the directory..."
 
+        with open(self.human_file, 'r') as f:
+            hbuf = f.readlines()
+
         # Begin either serial or parallel image processing with the list of images
         if self.ser == True:
-            self._start_serial(raw_files)
+            self._start_serial(raw_files, hbuf)
         else:
-            self._start_parallel(raw_files)
+            self._start_parallel(raw_files, hbuf)
 
         print "Finishing CUDA ML Application Execution"
         print "Results captured in " + self.csv_file
