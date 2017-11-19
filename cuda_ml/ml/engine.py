@@ -90,8 +90,8 @@ class Engine:
         for img in images:
             # Fwd declarations for calculations
             exec_time = 0
-            dark_count = [0]
-            light_count = [0]
+            light_count = 0
+            dark_count = 0
             mid_point = [128]
             data = []
             tf = False
@@ -104,36 +104,26 @@ class Engine:
             size = [len(img_buf)]
 
             # Convert to single precision
-            img_buf = numpy.array(img_buf).astype(numpy.uint64)
-            mid_point = numpy.array(mid_point).astype(numpy.uint64)
-            size = numpy.array(size).astype(numpy.uint64)
-            dark_count = numpy.array(dark_count).astype(numpy.uint64)
-            light_count = numpy.array(light_count).astype(numpy.uint64)
+            img_buf = numpy.array(img_buf).astype(numpy.uint32)
+            mid_point = numpy.array(mid_point).astype(numpy.uint32)
+            size = numpy.array(size).astype(numpy.uint32)
 
             # Allocate memory for gpu
-            img_gpu = cuda.mem_alloc(len(img_buf) * dark_count.nbytes)
+            img_gpu = cuda.mem_alloc(img_buf.nbytes)
             mid_point_gpu = cuda.mem_alloc(mid_point.nbytes)
             size_gpu = cuda.mem_alloc(size.nbytes)
-            dark_gpu = cuda.mem_alloc(dark_count.nbytes)
-            light_gpu = cuda.mem_alloc(light_count.nbytes)
 
             # Transfer data onto gpu
             cuda.memcpy_htod(img_gpu, img_buf)
             cuda.memcpy_htod(mid_point_gpu, mid_point)
             cuda.memcpy_htod(size_gpu, size)
-            cuda.memcpy_htod(dark_gpu, dark_count)
-            cuda.memcpy_htod(light_gpu, light_count)
 
             # Declare CUDA kernel function
             mod = SourceModule("""
-            __global__ void detector(unsigned int* img_buf, unsigned int* dark_count, unsigned int* light_count, 
-                unsigned int* mid_point, unsigned int* size)
-            {
+            __global__ void detector(unsigned int* img_buf, unsigned int* mid_point, unsigned int* size) {
                 for (unsigned int i = blockIdx.x * blockDim.x + threadIdx.x; i < size[0]; i += blockDim.x * gridDim.x) {
                     if (img_buf[i] <= mid_point[0]) {
-                        dark_count[0] += 1;
-                    } else {
-                        light_count[0] += 1;
+                        img_buf[i] *= 0;
                     }
                 }
             } 
@@ -144,25 +134,24 @@ class Engine:
 
             # Invoke kernel function
             func = mod.get_function("detector")
-            func(img_gpu, dark_gpu, light_gpu, mid_point_gpu, size_gpu, block=(4,1,1), grid=(1, 1))
+            func(img_gpu, mid_point_gpu, size_gpu, block=(4,1,1), grid=(1, 1))
 
             # Fetch data from kernel
-            new_dark_count = numpy.empty_like(dark_count)
-            new_light_count = numpy.empty_like(light_count)
-            cuda.memcpy_dtoh(new_dark_count, dark_gpu)
-            cuda.memcpy_dtoh(new_light_count, light_gpu)
+            new_img_buf = numpy.empty_like(img_buf)
+            cuda.memcpy_dtoh(new_img_buf, img_gpu)
 
             for res in hbuf:
                 if img_bn in res:
                     self.assessment = res.split(",")[1].split("\n")[0]
                     break
 
-            print img
-            print new_dark_count[0]
-            print new_light_count[0]
-            print size[0]
+            for element in new_img_buf:
+                if element == 0:
+                    dark_count += 1
+                else:
+                    light_count += 1
 
-            if new_dark_count[0] >= new_light_count[0]:
+            if dark_count >= light_count:
                 if self.assessment != "dark":
                     mid_point += 10
                 else:
