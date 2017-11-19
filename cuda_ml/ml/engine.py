@@ -130,11 +130,16 @@ class Engine:
             """)
 
             # Determine light vs dark in image using img classification algo
-            exec_time = time()
+            start = cuda.Event()
+            end = cuda.Event()
 
             # Invoke kernel function
             func = mod.get_function("detector")
-            func(img_gpu, mid_point_gpu, size_gpu, block=(4,1,1), grid=(1, 1))
+            start.record() 
+            func(img_gpu, mid_point_gpu, size_gpu, block=(512, 2, 1), grid=(512, 2, 1))
+            end.record() 
+            end.synchronize()
+            exec_time = start.time_till(end)
 
             # Fetch data from kernel
             new_img_buf = numpy.empty_like(img_buf)
@@ -165,9 +170,6 @@ class Engine:
                     tf = True
 
                 data.append("light")
-
-            # Calculate total execution time
-            exec_time = time() - exec_time
 
             # Append data to dictionary
             data.append(exec_time)

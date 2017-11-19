@@ -22,3 +22,4 @@ run in parallel)
 - For help on running simply run cuda_ml --help to display options
 - The pillow_utiliy can be ran in a separate environment... it is not used by cuda_ml due to incompatible dependencies on the
 UITS system that Pillow depends on
+- If you begin getting disk IO error clean the cuda cache! 
