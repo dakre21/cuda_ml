@@ -139,7 +139,7 @@ class Engine:
             func(img_gpu, mid_point_gpu, size_gpu, block=(512, 2, 1), grid=(512, 2, 1))
             end.record() 
             end.synchronize()
-            exec_time = start.time_till(end)
+            exec_time = start.time_till(end)*1e-3
 
             # Fetch data from kernel
             new_img_buf = numpy.empty_like(img_buf)
